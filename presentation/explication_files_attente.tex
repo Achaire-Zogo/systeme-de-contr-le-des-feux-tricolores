@@ -1,0 +1,213 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\geometry{margin=2.5cm}
+
+% Définition du langage JavaScript pour listings
+\lstdefinelanguage{JavaScript}{
+  keywords={break, case, catch, continue, debugger, default, delete, do, else, finally, for, function, if, in, instanceof, new, return, switch, this, throw, try, typeof, var, void, while, with, let, const},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\color{magenta}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{orange}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{orange},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\title{Implémentation de la théorie des files d'attente dans un système de feux tricolores}
+\author{Projet Système de Contrôle des Feux}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\begin{frame}{Problématique du Trafic Urbain}
+\begin{itemize}
+\item Les carrefours sont des points critiques de la circulation urbaine
+\item La gestion inefficace des feux de circulation cause des embouteillages
+\item Conséquences:
+    \begin{itemize}
+    \item Augmentation du temps de trajet
+    \item Pollution accrue
+    \item Impact économique négatif
+    \end{itemize}
+\item Besoin d'un système intelligent s'adaptant aux conditions de trafic réelles
+\end{itemize}
+\end{frame}
+
+\section{Théorie des Files d'Attente}
+
+\begin{frame}{Fondements de la Théorie des Files d'Attente}
+\begin{itemize}
+\item Branche des mathématiques qui étudie les temps d'attente dans les systèmes à capacité limitée
+\item Éléments fondamentaux:
+    \begin{itemize}
+    \item Processus d'arrivée (souvent modélisé par un processus de Poisson)
+    \item Processus de service
+    \item Nombre de serveurs
+    \item Discipline de service (FIFO, LIFO, etc.)
+    \item Capacité du système
+    \end{itemize}
+\item Application parfaite pour les systèmes de trafic routier
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Modèle Mathématique M/M/1}
+    \begin{itemize}
+    \item Modèle M/M/1: Le plus simple des modèles de files d'attente
+        \begin{itemize}
+        \item M: Processus d'arrivée markovien (distribution de Poisson)
+        \item M: Temps de service markovien (distribution exponentielle)
+        \item 1: Un seul serveur
+        \end{itemize}
+    \item Paramètres clés:
+        \begin{itemize}
+        \item $\lambda$ : Taux d'arrivée moyen
+        \item $\mu$ : Taux de service moyen
+        \item $\rho = \lambda/\mu$ : Intensité du trafic (doit être $< 1$ pour stabilité)
+        \end{itemize}
+    \end{itemize}
+    
+    \begin{block}{Théorème de Little}
+    $L = \lambda W$ où:
+    \begin{itemize}
+    \item $L$ : Nombre moyen d'éléments dans le système
+    \item $\lambda$ : Taux d'arrivée
+    \item $W$ : Temps moyen passé dans le système
+    \end{itemize}
+    \end{block}
+    \end{frame}
+    
+    \begin{frame}{Application aux Carrefours}
+    \begin{columns}
+    \column{0.5\textwidth}
+    \begin{itemize}
+    \item Chaque voie d'approche est une file d'attente
+    \item Arrivées de véhicules: processus de Poisson
+    \item Service = passage au feu vert
+    \item Temps d'attente moyen:
+        \begin{equation*}
+        W = \frac{1}{\mu - \lambda}
+        \end{equation*}
+    \item Longueur moyenne de la file:
+        \begin{equation*}
+        L = \frac{\lambda}{\mu - \lambda}
+        \end{equation*}
+    \end{itemize}
+    \end{columns}
+    \end{frame}
+
+\begin{frame}{Traduction dans le code}
+\subsection{Paramètres et entités}
+Le code utilise des variables globales pour modéliser le taux d'arrivée ($\lambda$), le taux de service ($\mu$), et la file :
+\begin{lstlisting}[language=JavaScript, caption={Paramètres du modèle}]
+let arrivalRate = 0.8; // λ (lambda) - taux d'arrivée
+let serviceRate = 1.2; // μ (mu) - taux de service
+let entities = [];
+let stats = {
+    totalVehicles: 0,
+    totalWaitTime: 0,
+    totalServiceTime: 0,
+    vehiclesServed: 0,
+    waitTimes: [],
+    queueLengths: { north: [], south: [], east: [], west: [] },
+    currentQueues: { north: 0, south: 0, east: 0, west: 0 }
+};
+\end{lstlisting}
+\end{frame}
+
+\subsection{Création des véhicules (arrivées)}
+Chaque véhicule est créé avec une direction et des paramètres individuels. Voici la fonction de création :
+\begin{lstlisting}[language=JavaScript, caption={Création d'un véhicule}]
+function createVehicle(specifiedDirection = null) {
+    const type = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+    const direction = specifiedDirection || ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)];
+    const vehicle = document.createElement('div');
+    vehicle.className = `vehicle ${type.class}`;
+    vehicle.textContent = type.symbol;
+    vehicle.id = `vehicle-${entityId++}`;
+    vehicle.dataset.arrivalTime = Date.now();
+    vehicle.dataset.direction = direction;
+    vehicle.dataset.speed = type.speed * (0.8 + Math.random() * 0.4);
+    vehicle.dataset.serviceTime = type.serviceTime;
+    vehicle.dataset.length = type.length;
+    vehicle.dataset.waiting = 'false';
+    vehicle.dataset.stopTime = Date.now().toString();
+    vehicle.dataset.queuePosition = '0';
+    // Positionnement selon la direction ...
+    document.getElementById('intersection').appendChild(vehicle);
+    entities.push(vehicle);
+    stats.totalVehicles++;
+}
+\end{lstlisting}
+
+\subsection{Gestion de la file et du service}
+La fonction \texttt{canMove} décide si un véhicule peut avancer, selon la position, le feu et la présence d'autres véhicules :
+\begin{lstlisting}[language=JavaScript, caption={Gestion de la file et du feu}]
+function canMove(vehicle) {
+    const pos = getVehiclePosition(vehicle);
+    // ...
+    // Si dans la zone d'arrêt, vérifier le feu
+    if (inStoppingZone) {
+        let canPassLight = true;
+        if ((pos.direction === 'north' || pos.direction === 'south')) {
+            canPassLight = trafficLightState.northSouth === 'green';
+        } else {
+            canPassLight = trafficLightState.eastWest === 'green';
+        }
+        if (!canPassLight) {
+            // Véhicule doit attendre
+            return false;
+        }
+    }
+    // Sinon, avancer
+    return true;
+}
+\end{lstlisting}
+
+\subsection{Calculs statistiques (Little)}
+Pour afficher les métriques théoriques :
+\begin{lstlisting}[language=JavaScript, caption={Calculs théoriques}]
+function calculateTheoreticalMetrics() {
+    const rho = arrivalRate / serviceRate;
+    const avgQueueLength = (rho * rho) / (1 - rho);
+    const avgWaitTime = avgQueueLength / arrivalRate;
+    const avgSystemTime = 1 / (serviceRate - arrivalRate);
+    return { rho, avgQueueLength, avgWaitTime, avgSystemTime };
+}
+\end{lstlisting}
+
+\section{Conclusion}
+La théorie des files d'attente permet d'optimiser la gestion du trafic en modélisant l'arrivée et le service des véhicules. Notre implémentation relie directement la théorie (calculs analytiques) et la simulation (animation JS), permettant de visualiser l'effet des paramètres sur la fluidité du trafic.
+
+\end{document}

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modèle de Files d'Attente - Carrefour Intelligent</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .control-section h3 {
+            margin: 0 0 15px 0;
+            color: #444;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .start-btn { background: linear-gradient(45deg, #4CAF50, #45a049); color: white; }
+        .stop-btn { background: linear-gradient(45deg, #f44336, #da190b); color: white; }
+        .manual-btn { background: linear-gradient(45deg, #2196F3, #0b7dda); color: white; }
+        .pedestrian-btn { background: linear-gradient(45deg, #FF9800, #f57c00); color: white; }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .parameter-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .parameter-control label {
+            min-width: 120px;
+            font-weight: 500;
+        }
+
+        .parameter-control input {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .parameter-control input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        #intersection {
+            position: relative;
+            width: 800px;
+            height: 800px;
+            background: #2c3e50;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            margin: 0 auto;
+        }
+
+        /* Routes avec marquages réalistes */
+        .road-horizontal {
+            position: absolute;
+            top: 350px;
+            left: 0;
+            width: 800px;
+            height: 100px;
+            background: linear-gradient(to bottom, #34495e 0%, #2c3e50 50%, #34495e 100%);
+            border-top: 4px solid #f39c12;
+            border-bottom: 4px solid #f39c12;
+        }
+
+        .road-vertical {
+            position: absolute;
+            top: 0;
+            left: 350px;
+            width: 100px;
+            height: 800px;
+            background: linear-gradient(to right, #34495e 0%, #2c3e50 50%, #34495e 100%);
+            border-left: 4px solid #f39c12;
+            border-right: 4px solid #f39c12;
+        }
+
+        /* Lignes de séparation avec animation */
+        .center-line-h {
+            position: absolute;
+            top: 398px;
+            left: 0;
+            width: 800px;
+            height: 4px;
+            background: repeating-linear-gradient(90deg, #ecf0f1 0px, #ecf0f1 30px, transparent 30px, transparent 50px);
+            animation: moveLine 2s linear infinite;
+        }
+
+        .center-line-v {
+            position: absolute;
+            top: 0;
+            left: 398px;
+            width: 4px;
+            height: 800px;
+            background: repeating-linear-gradient(0deg, #ecf0f1 0px, #ecf0f1 30px, transparent 30px, transparent 50px);
+            animation: moveLine 2s linear infinite;
+        }
+
+        @keyframes moveLine {
+            0% { background-position: 0px 0px; }
+            100% { background-position: 50px 50px; }
+        }
+
+        /* Passages piétons */
+        .crosswalk {
+            position: absolute;
+            background: repeating-linear-gradient(45deg, #ecf0f1 0px, #ecf0f1 15px, transparent 15px, transparent 30px);
+            z-index: 1;
+        }
+
+        .crosswalk-north {
+            top: 320px;
+            left: 360px;
+            width: 80px;
+            height: 30px;
+        }
+
+        .crosswalk-south {
+            top: 450px;
+            left: 360px;
+            width: 80px;
+            height: 30px;
+        }
+
+        .crosswalk-east {
+            top: 360px;
+            left: 450px;
+            width: 30px;
+            height: 80px;
+            background: repeating-linear-gradient(135deg, #ecf0f1 0px, #ecf0f1 15px, transparent 15px, transparent 30px);
+        }
+
+        .crosswalk-west {
+            top: 360px;
+            left: 320px;
+            width: 30px;
+            height: 80px;
+            background: repeating-linear-gradient(135deg, #ecf0f1 0px, #ecf0f1 15px, transparent 15px, transparent 30px);
+        }
+
+        /* Feux de signalisation améliorés */
+        .traffic-light {
+            position: absolute;
+            width: 35px;
+            height: 90px;
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            border-radius: 18px;
+            border: 3px solid #1a252f;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 0;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+
+        .light {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #34495e;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .light::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3), transparent);
+        }
+
+        .red { background: #2c3e50; }
+        .red.active { 
+            background: radial-gradient(circle, #ff6b6b, #e74c3c);
+            box-shadow: 0 0 25px #e74c3c, inset 0 0 15px rgba(255,255,255,0.3);
+            border-color: #c0392b;
+        }
+
+        .yellow { background: #2c3e50; }
+        .yellow.active { 
+            background: radial-gradient(circle, #f1c40f, #f39c12);
+            box-shadow: 0 0 25px #f39c12, inset 0 0 15px rgba(255,255,255,0.3);
+            border-color: #d68910;
+        }
+
+        .green { background: #2c3e50; }
+        .green.active { 
+            background: radial-gradient(circle, #2ecc71, #27ae60);
+            box-shadow: 0 0 25px #27ae60, inset 0 0 15px rgba(255,255,255,0.3);
+            border-color: #1e8449;
+        }
+
+        /* Positionnement des feux */
+        .light-north { top: 280px; left: 382px; }
+        .light-south { top: 430px; left: 382px; }
+        .light-east { top: 382px; left: 430px; }
+        .light-west { top: 382px; left: 335px; }
+
+        /* Styles pour les véhicules */
+        .vehicle {
+            position: absolute;
+            font-size: 24px;
+            transform-origin: center;
+            z-index: 10;
+            transition: filter 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .car { 
+            width: 45px; 
+            height: 25px; 
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .truck { 
+            width: 60px; 
+            height: 30px; 
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            color: white;
+        }
+
+        .bus { 
+            width: 70px; 
+            height: 32px; 
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            color: white;
+        }
+
+        .pedestrian {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 8;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        /* Zones d'attente */
+        .queue-zone {
+            position: absolute;
+            border: 2px dashed rgba(52, 152, 219, 0.5);
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 5px;
+        }
+
+        .queue-north { top: 50px; left: 360px; width: 80px; height: 250px; }
+        .queue-south { top: 500px; left: 360px; width: 80px; height: 250px; }
+        .queue-east { top: 360px; left: 500px; width: 250px; height: 80px; }
+        .queue-west { top: 360px; left: 50px; width: 250px; height: 80px; }
+
+        /* Statistiques */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Indicateurs de performance */
+        .performance-indicator {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .performance-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #f1c40f, #e74c3c);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .active-light {
+            animation: pulse 2s infinite;
+        }
+
+        .congested {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚦 Modèle Mathématique de Files d'Attente</h1>
+        <p>Simulation Avancée avec Théorie des Queues et Analyse de Trafic</p>
+    </div>
+
+    <div class="controls-panel">
+        <div class="control-section">
+            <h3>🎮 Contrôles de Simulation</h3>
+            <div class="controls">
+                <button class="start-btn" onclick="startSimulation()">▶️ Démarrer</button>
+                <button class="stop-btn" onclick="stopSimulation()">⏸️ Pause</button>
+                <button class="manual-btn" onclick="switchLights()">🔄 Cycle Manuel</button>
+                <button class="pedestrian-btn" onclick="addPedestrian()">🚶 Ajouter Piéton</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>⚙️ Paramètres du Modèle</h3>
+            <div class="parameter-control">
+                <label>Taux d'arrivée (λ):</label>
+                <input type="range" id="arrivalRate" min="0.1" max="2" step="0.1" value="0.8" onchange="updateParameters()">
+                <span id="arrivalRateValue">0.8</span>
+            </div>
+            <div class="parameter-control">
+                <label>Distance sécurité:</label>
+                <input type="range" id="safetyDistance" min="30" max="100" step="10" value="50" onchange="updateParameters()">
+                <span id="safetyDistanceValue">50px</span>
+            </div>
+            <div class="parameter-control">
+                <label>Vitesse max:</label>
+                <input type="range" id="maxSpeed" min="1" max="5" step="0.5" value="2.5" onchange="updateParameters()">
+                <span id="maxSpeedValue">2.5</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-8">
+            <div id="intersection">
+                <!-- Infrastructure routière -->
+                <div class="road-horizontal"></div>
+                <div class="road-vertical"></div>
+                <div class="center-line-h"></div>
+                <div class="center-line-v"></div>
+        
+                <!-- Passages piétons -->
+                <div class="crosswalk crosswalk-north"></div>
+                <div class="crosswalk crosswalk-south"></div>
+                <div class="crosswalk crosswalk-east"></div>
+                <div class="crosswalk crosswalk-west"></div>
+        
+                <!-- Zones d'attente -->
+                <div class="queue-zone queue-north"></div>
+                <div class="queue-zone queue-south"></div>
+                <div class="queue-zone queue-east"></div>
+                <div class="queue-zone queue-west"></div>
+        
+                <!-- Feux de signalisation -->
+                <div class="traffic-light light-north">
+                    <div class="light red" id="north-red"></div>
+                    <div class="light yellow" id="north-yellow"></div>
+                    <div class="light green" id="north-green"></div>
+                </div>
+                <div class="traffic-light light-south">
+                    <div class="light red" id="south-red"></div>
+                    <div class="light yellow" id="south-yellow"></div>
+                    <div class="light green" id="south-green"></div>
+                </div>
+                <div class="traffic-light light-east">
+                    <div class="light red" id="east-red"></div>
+                    <div class="light yellow" id="east-yellow"></div>
+                    <div class="light green" id="east-green"></div>
+                </div>
+                <div class="traffic-light light-west">
+                    <div class="light red" id="west-red"></div>
+                    <div class="light yellow" id="west-yellow"></div>
+                    <div class="light green" id="west-green"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-value" id="queueLength">0</div>
+                    <div class="stat-label">Longueur Moyenne des Files</div>
+                    <div class="performance-indicator">
+                        <div class="performance-bar" id="queueBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="waitTime">0s</div>
+                    <div class="stat-label">Temps d'Attente Moyen</div>
+                    <div class="performance-indicator">
+                        <div class="performance-bar" id="waitBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="throughput">0</div>
+                    <div class="stat-label">Débit (véhicules/min)</div>
+                    <div class="performance-indicator">
+                        <div class="performance-bar" id="throughputBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="utilization">0%</div>
+                    <div class="stat-label">Taux d'Utilisation (ρ)</div>
+                    <div class="performance-indicator">
+                        <div class="performance-bar" id="utilizationBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pedestrianCount">0</div>
+                    <div class="stat-label">Piétons Actifs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="systemState">Stable</div>
+                    <div class="stat-label">État du Système</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    
+
+    <script>
+        // Variables globales du modèle
+        let isRunning = false;
+        let currentPhase = 0;
+        let timeLeft = 12;
+        let entities = [];
+        let pedestrians = [];
+        let entityId = 0;
+        let pedestrianId = 0;
+        
+        // Paramètres du modèle de files d'attente
+        let arrivalRate = 0.8; // λ (lambda) - taux d'arrivée
+        let serviceRate = 1.2; // μ (mu) - taux de service
+        let safetyDistance = 50; // Distance minimale entre véhicules
+        let maxSpeed = 2.5;
+        
+        // Statistiques en temps réel
+        let stats = {
+            totalVehicles: 0,
+            totalWaitTime: 0,
+            totalServiceTime: 0,
+            vehiclesServed: 0,
+            waitTimes: [], // Ajout de cette propriété pour stocker les temps d'attente
+            queueLengths: { north: [], south: [], east: [], west: [] },
+            currentQueues: { north: 0, south: 0, east: 0, west: 0 }
+        };
+
+        // Types de véhicules pour la simulation
+        const vehicleTypes = [
+            { class: 'car', symbol: '🚗', speed: maxSpeed, length: 20, serviceTime: 3 },
+            { class: 'bus', symbol: '🚌', speed: maxSpeed * 0.8, length: 40, serviceTime: 5 },
+            { class: 'truck', symbol: '🚚', speed: maxSpeed * 0.6, length: 35, serviceTime: 4 },
+            { class: 'motorcycle', symbol: '🛵', speed: maxSpeed * 1.2, length: 15, serviceTime: 2 }
+        ];
+        
+        // Phases des feux avec durées optimisées selon Little's Law
+        const phases = [
+            { duration: 12, name: "Nord-Sud Vert", ns: "green", ew: "red", pedestrian: false },
+            { duration: 3, name: "Nord-Sud Jaune", ns: "yellow", ew: "red", pedestrian: false },
+            { duration: 5, name: "Piétons NS", ns: "red", ew: "red", pedestrian: "ns" },
+            { duration: 12, name: "Est-Ouest Vert", ns: "red", ew: "green", pedestrian: false },
+            { duration: 3, name: "Est-Ouest Jaune", ns: "red", ew: "yellow", pedestrian: false },
+            { duration: 5, name: "Piétons EW", ns: "red", ew: "red", pedestrian: "ew" }
+        ];
+
+
+        // Modèle M/M/1 - Calculs théoriques
+        function calculateTheoreticalMetrics() {
+            const rho = arrivalRate / serviceRate; // Facteur d'utilisation
+            const avgQueueLength = (rho * rho) / (1 - rho); // L = ρ²/(1-ρ)
+            const avgWaitTime = avgQueueLength / arrivalRate; // W = L/λ (Little's Law)
+            const avgSystemTime = 1 / (serviceRate - arrivalRate); // T = 1/(μ-λ)
+            
+            return { rho, avgQueueLength, avgWaitTime, avgSystemTime };
+        }
+
+        function updateParameters() {
+            arrivalRate = parseFloat(document.getElementById('arrivalRate').value);
+            safetyDistance = parseInt(document.getElementById('safetyDistance').value);
+            maxSpeed = parseFloat(document.getElementById('maxSpeed').value);
+            
+            document.getElementById('arrivalRateValue').textContent = arrivalRate;
+            document.getElementById('safetyDistanceValue').textContent = safetyDistance + 'px';
+            document.getElementById('maxSpeedValue').textContent = maxSpeed;
+        }
+
+        function createVehicle(specifiedDirection = null) {
+            // Modèle de Poisson pour les arrivées
+            if (Math.random() < arrivalRate * 0.1 || specifiedDirection) {
+                const type = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+                // Si une direction est spécifiée, l'utiliser, sinon choisir aléatoirement
+                const direction = specifiedDirection || ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)];
+                
+                const vehicle = document.createElement('div');
+                vehicle.className = `vehicle ${type.class}`;
+                vehicle.textContent = type.symbol;
+                vehicle.id = `vehicle-${entityId++}`;
+                
+                // Propriétés pour le modèle de files d'attente
+                vehicle.dataset.arrivalTime = Date.now();
+                vehicle.dataset.direction = direction;
+                vehicle.dataset.speed = type.speed * (0.8 + Math.random() * 0.4); // Variation de vitesse
+                vehicle.dataset.serviceTime = type.serviceTime;
+                vehicle.dataset.length = type.length;
+                vehicle.dataset.waiting = 'false';
+                vehicle.dataset.stopTime = Date.now().toString(); // Initialiser le temps d'arrêt
+                vehicle.dataset.queuePosition = '0';
+                
+                // Positionnement selon la direction
+                const positions = {
+                    north: { top: -40, left: 365, angle: 0 },
+                    south: { top: 840, left: 365, angle: 180 },
+                    east: { top: 375, left: 840, angle: 270 },
+                    west: { top: 375, left: -80, angle: 90 }
+                };
+                
+                const pos = positions[direction];
+                vehicle.style.top = pos.top + 'px';
+                vehicle.style.left = pos.left + 'px';
+                vehicle.style.transform = `rotate(${pos.angle}deg)`;
+                
+                document.getElementById('intersection').appendChild(vehicle);
+                entities.push(vehicle);
+                stats.totalVehicles++;
+            }
+        }
+
+        function createPedestrian() {
+            const crosswalks = ['north', 'south', 'east', 'west'];
+            const direction = crosswalks[Math.floor(Math.random() * crosswalks.length)];
+            
+            const pedestrian = document.createElement('div');
+            pedestrian.className = 'pedestrian';
+            pedestrian.textContent = '🚶';
+            pedestrian.id = `pedestrian-${pedestrianId++}`;
+            
+            pedestrian.dataset.direction = direction;
+            pedestrian.dataset.speed = 1 + Math.random() * 0.5;
+            pedestrian.dataset.waiting = 'true';
+            
+            // Positionnement selon le passage piéton
+            const positions = {
+                north: { top: 300, left: 380 + Math.random() * 40 },
+                south: { top: 480, left: 380 + Math.random() * 40 },
+                east: { top: 380 + Math.random() * 40, left: 480 },
+                west: { top: 380 + Math.random() * 40, left: 300 }
+            };
+            
+            const pos = positions[direction];
+            pedestrian.style.top = pos.top + 'px';
+            pedestrian.style.left = pos.left + 'px';
+            
+            document.getElementById('intersection').appendChild(pedestrian);
+            pedestrians.push(pedestrian);
+        }
+
+        function addPedestrian() {
+            createPedestrian();
+        }
+
+        function calculateSafeDistance(vehicle1, vehicle2, direction) {
+            const v1Speed = parseFloat(vehicle1.dataset.speed);
+            const v2Speed = parseFloat(vehicle2.dataset.speed);
+            const reactionTime = 1.5; // secondes
+            
+            // Distance de sécurité basée sur la vitesse et le temps de réaction
+            return safetyDistance + (v1Speed * reactionTime * 10);
+        }
+
+        function getVehiclePosition(vehicle) {
+            return {
+                top: parseInt(vehicle.style.top),
+                left: parseInt(vehicle.style.left),
+                direction: vehicle.dataset.direction
+            };
+        }
+
+        function checkCollision(vehicle, otherVehicle) {
+            const pos1 = getVehiclePosition(vehicle);
+            const pos2 = getVehiclePosition(otherVehicle);
+            
+            if (pos1.direction !== pos2.direction) return false;
+            
+            const distance = Math.sqrt(
+                Math.pow(pos1.left - pos2.left, 2) + 
+                Math.pow(pos1.top - pos2.top, 2)
+            );
+            
+            const safeDistance = calculateSafeDistance(vehicle, otherVehicle, pos1.direction);
+            return distance < safeDistance;
+        }
+
+        function canMove(vehicle) {
+            const pos = getVehiclePosition(vehicle);
+            
+            // Zones d'arrêt spécifiques à chaque direction à l'approche des feux
+            const stoppingZones = {
+                north: { top: 280, bottom: 330, left: 350, right: 400 },
+                south: { top: 470, bottom: 520, left: 350, right: 400 },
+                east: { top: 350, bottom: 400, left: 470, right: 520 },
+                west: { top: 350, bottom: 400, left: 280, right: 330 }
+            };
+            
+            // Détecter si le véhicule est dans une zone d'arrêt
+            const zone = stoppingZones[pos.direction];
+            const inStoppingZone = (
+                pos.left >= zone.left && 
+                pos.left <= zone.right && 
+                pos.top >= zone.top && 
+                pos.top <= zone.bottom
+            );
+            
+            // Vérifier si le véhicule est au milieu de l'intersection
+            const inIntersection = (pos.left > 320 && pos.left < 480 && pos.top > 320 && pos.top < 480);
+
+            // Nouvelle règle : si le véhicule a traversé l'intersection, il ne s'arrête plus jamais
+            let hasCrossed = false;
+            switch (pos.direction) {
+                case 'north':
+                    if (pos.top > 480) hasCrossed = true;
+                    break;
+                case 'south':
+                    if (pos.top < 320) hasCrossed = true;
+                    break;
+                case 'east':
+                    if (pos.left < 320) hasCrossed = true;
+                    break;
+                case 'west':
+                    if (pos.left > 480) hasCrossed = true;
+                    break;
+            }
+            if (inIntersection || hasCrossed) {
+                // Mettre à jour l'interface pour montrer que le véhicule est en train de traverser
+                if (vehicle.dataset.waiting === 'true') {
+                    vehicle.dataset.waiting = 'false';
+                    vehicle.classList.remove('waiting');
+                    // Calcul du temps d'attente avec vérification de sécurité
+                    const stopTime = vehicle.dataset.stopTime ? parseInt(vehicle.dataset.stopTime) : Date.now();
+                    const waitTime = (Date.now() - stopTime) / 1000;
+                    stats.waitTimes.push(waitTime);
+                }
+                return true;
+            }
+            
+            // Vérification des collisions avec d'autres véhicules
+            let canMoveFreely = true;
+            for (let other of entities) {
+                if (other !== vehicle && checkCollision(vehicle, other)) {
+                    canMoveFreely = false;
+                    break;
+                }
+            }
+            
+            // Si ne peut pas bouger à cause d'une collision, marquer comme en attente
+            if (!canMoveFreely && vehicle.dataset.waiting !== 'true') {
+                vehicle.dataset.waiting = 'true';
+                vehicle.dataset.stopTime = Date.now().toString();
+                vehicle.classList.add('waiting');
+            } else if (canMoveFreely && vehicle.dataset.waiting === 'true' && !inStoppingZone) {
+                // Si le véhicule peut bouger à nouveau (plus de collisions) et n'est pas dans une zone d'arrêt
+                vehicle.dataset.waiting = 'false';
+                vehicle.classList.remove('waiting');
+            }
+            
+            // Vérifier les feux de signalisation uniquement si dans une zone d'arrêt
+            if (inStoppingZone) {
+                let canPassLight = true;
+                
+                // Déterminer l'état du feu pour la direction du véhicule
+                if ((pos.direction === 'north' || pos.direction === 'south')) {
+                    // Vérifier les feux nord-sud
+                    canPassLight = trafficLightState.northSouth === 'green';
+                    // Pour le débogage
+                    // console.log('Véhicule Nord-Sud:', pos.direction, 'Feu:', trafficLightState.northSouth, 'Peut passer:', canPassLight);
+                } else {
+                    // Vérifier les feux est-ouest
+                    canPassLight = trafficLightState.eastWest === 'green';
+                    // Pour le débogage
+                    // console.log('Véhicule Est-Ouest:', pos.direction, 'Feu:', trafficLightState.eastWest, 'Peut passer:', canPassLight);
+                }
+                
+                // Si le feu est rouge, marquer comme en attente
+                if (!canPassLight && vehicle.dataset.waiting !== 'true') {
+                    vehicle.dataset.waiting = 'true';
+                    vehicle.dataset.stopTime = Date.now().toString();
+                    // Ajouter une classe visuelle pour indiquer l'attente au feu
+                    vehicle.classList.add('waiting');
+                } else if (canPassLight && vehicle.dataset.waiting === 'true') {
+                    // Si le feu devient vert, retirer le statut d'attente
+                    vehicle.dataset.waiting = 'false';
+                    // Calculer le temps d'attente avec vérification de sécurité
+                    const stopTime = vehicle.dataset.stopTime ? parseInt(vehicle.dataset.stopTime) : Date.now();
+                    const waitTime = (Date.now() - stopTime) / 1000;
+                    stats.waitTimes.push(waitTime);
+                    // Retirer la classe visuelle d'attente
+                    vehicle.classList.remove('waiting');
+                    
+                    // Force le véhicule à avancer
+                    return true;
+                }
+                
+                return canPassLight && canMoveFreely;
+            }
+            
+            // Si pas dans une zone d'arrêt, le véhicule peut se déplacer s'il n'y a pas de collision
+            return canMoveFreely;
+        }
+
+        function updateQueueStatistics() {
+            // Réinitialiser les compteurs de files
+            stats.currentQueues = { north: 0, south: 0, east: 0, west: 0 };
+            
+            entities.forEach(vehicle => {
+                const pos = getVehiclePosition(vehicle);
+                const isWaiting = !canMove(vehicle);
+                
+                if (isWaiting) {
+                    stats.currentQueues[pos.direction]++;
+                }
+            });
+        }
+        
+        // Variables de simulation
+        let simulationRunning = false;
+        let simulationInterval;
+        let vehicleInterval;
+        let statsUpdateInterval;
+        
+        // Configuration initiale des feux
+        let trafficLightState = {
+            northSouth: 'green',  // nord-sud peut être vert initialement
+            eastWest: 'red'      // est-ouest est rouge
+        };
+        
+        // Fonction pour démarrer la simulation
+        function startSimulation() {
+            if (simulationRunning) return; // Éviter les démarrages multiples
+            
+            simulationRunning = true;
+            console.log('Simulation démarrée');
+
+            // Placer exactement deux véhicules par voie au démarrage
+            const intersectionPositions = {
+                north: [ { top: 60, left: 365 }, { top: 200, left: 365 } ],
+                south: [ { top: 740, left: 365 }, { top: 600, left: 365 } ],
+                east:  [ { top: 375, left: 740 }, { top: 375, left: 600 } ],
+                west:  [ { top: 375, left: 60 }, { top: 375, left: 200 } ]
+            };
+
+            const angles = { north: 0, south: 180, east: 270, west: 90 };
+            const vehicleTypesCount = vehicleTypes.length;
+            let vehicleTypeIndex = 0;
+            Object.keys(intersectionPositions).forEach(direction => {
+                intersectionPositions[direction].forEach((pos, idx) => {
+                    const type = vehicleTypes[vehicleTypeIndex % vehicleTypesCount];
+                    const vehicle = document.createElement('div');
+                    vehicle.className = `vehicle ${type.class}`;
+                    vehicle.textContent = type.symbol;
+                    vehicle.id = `vehicle-${entityId++}`;
+                    vehicle.dataset.arrivalTime = Date.now();
+                    vehicle.dataset.direction = direction;
+                    vehicle.dataset.speed = type.speed * (0.8 + Math.random() * 0.4);
+                    vehicle.dataset.serviceTime = type.serviceTime;
+                    vehicle.dataset.length = type.length;
+                    vehicle.dataset.waiting = 'false';
+                    vehicle.dataset.stopTime = Date.now().toString();
+                    vehicle.dataset.queuePosition = idx.toString();
+                    vehicle.style.top = pos.top + 'px';
+                    vehicle.style.left = pos.left + 'px';
+                    vehicle.style.transform = `rotate(${angles[direction]}deg)`;
+                    document.getElementById('intersection').appendChild(vehicle);
+                    entities.push(vehicle);
+                    stats.totalVehicles++;
+                    vehicleTypeIndex++;
+                });
+            });
+            // Désactiver l'ajout automatique de véhicules
+            // vehicleInterval = setInterval(...)
+            
+            // Mettre à jour l'animation des véhicules
+            simulationInterval = setInterval(() => {
+                // Mettre à jour la position de chaque véhicule
+                entities.forEach(entity => {
+                    if (entity.classList.contains('vehicle') && canMove(entity)) {
+                        const direction = entity.dataset.direction;
+                        const speed = parseFloat(entity.dataset.speed);
+                        
+                        // Déplacer le véhicule selon sa direction
+                        switch(direction) {
+                            case 'north':
+                                entity.style.top = (parseFloat(entity.style.top) + speed) + 'px';
+                                break;
+                            case 'south':
+                                entity.style.top = (parseFloat(entity.style.top) - speed) + 'px';
+                                break;
+                            case 'east':
+                                entity.style.left = (parseFloat(entity.style.left) - speed) + 'px';
+                                break;
+                            case 'west':
+                                entity.style.left = (parseFloat(entity.style.left) + speed) + 'px';
+                                break;
+                        }
+                    }
+                });
+                
+                // Boucle continue : lorsqu'un véhicule sort du cadre, il réapparaît de l'autre côté
+                entities.forEach(entity => {
+                    const rect = entity.getBoundingClientRect();
+                    const intersectionRect = document.getElementById('intersection').getBoundingClientRect();
+                    const direction = entity.dataset.direction;
+                    let reset = false;
+                    let newTop = parseFloat(entity.style.top);
+                    let newLeft = parseFloat(entity.style.left);
+                    switch(direction) {
+                        case 'north':
+                            if (rect.top > intersectionRect.bottom + 100) {
+                                newTop = -40;
+                                reset = true;
+                            }
+                            break;
+                        case 'south':
+                            if (rect.bottom < intersectionRect.top - 100) {
+                                newTop = 800;
+                                reset = true;
+                            }
+                            break;
+                        case 'east':
+                            if (rect.right < intersectionRect.left - 100) {
+                                newLeft = 800;
+                                reset = true;
+                            }
+                            break;
+                        case 'west':
+                            if (rect.left > intersectionRect.right + 100) {
+                                newLeft = -80;
+                                reset = true;
+                            }
+                            break;
+                    }
+                    if (reset) {
+                        entity.style.top = newTop + 'px';
+                        entity.style.left = newLeft + 'px';
+                        // Réinitialiser le temps d'arrivée pour les stats si besoin
+                        entity.dataset.arrivalTime = Date.now();
+                        entity.dataset.waiting = 'false';
+                    }
+                });
+                
+                // Mettre à jour les statistiques
+                updateQueueStatistics();
+            }, 50); // 20 FPS pour l'animation
+            
+            // Changer les feux automatiquement toutes les 10 secondes
+            lightInterval = setInterval(switchLights, 10000);
+            
+            // Mise à jour des statistiques d'interface
+            statsUpdateInterval = setInterval(() => {
+                // Calcul des statistiques
+                const totalVehicles = Object.values(stats.currentQueues).reduce((a, b) => a + b, 0);
+                const avgQueueLength = totalVehicles / 4; // Moyenne sur les 4 directions
+                
+                // Mise à jour de l'interface
+                document.getElementById('queueLength').textContent = avgQueueLength.toFixed(1);
+                document.getElementById('queueBar').style.width = Math.min(avgQueueLength * 10, 100) + '%';
+                
+                // Temps d'attente moyen (fictif pour cet exemple)
+                const avgWaitTime = avgQueueLength * 5; // 5 secondes par véhicule en file
+                document.getElementById('waitTime').textContent = avgWaitTime.toFixed(1) + 's';
+            }, 500);
+        }
+        
+        // Fonction pour arrêter la simulation
+        function stopSimulation() {
+            if (!simulationRunning) return;
+            
+            simulationRunning = false;
+            console.log('Simulation en pause');
+            
+            // Arrêter tous les intervalles
+            clearInterval(vehicleInterval);
+            clearInterval(simulationInterval);
+            clearInterval(lightInterval);
+            clearInterval(statsUpdateInterval);
+        }
+        
+        // Fonction pour changer l'état des feux
+        function switchLights() {
+            // Inverser l'état des feux
+            if (trafficLightState.northSouth === 'green') {
+                // Nord-Sud passe au jaune puis rouge
+                trafficLightState.northSouth = 'yellow';
+                
+                // Après 2 secondes, passer au rouge et l'est-ouest au vert
+                setTimeout(() => {
+                    trafficLightState.northSouth = 'red';
+                    trafficLightState.eastWest = 'green';
+                    updateLights();
+                }, 2000);
+            } else if (trafficLightState.eastWest === 'green') {
+                // Est-Ouest passe au jaune puis rouge
+                trafficLightState.eastWest = 'yellow';
+                
+                // Après 2 secondes, passer au rouge et le nord-sud au vert
+                setTimeout(() => {
+                    trafficLightState.eastWest = 'red';
+                    trafficLightState.northSouth = 'green';
+                    updateLights();
+                }, 2000);
+            }
+            
+            updateLights();
+        }
+        
+        // Fonction pour mettre à jour l'affichage des feux
+        function updateLights() {
+            // Mettre à jour les feux Nord-Sud
+            document.getElementById('north-red').className = `light red ${trafficLightState.northSouth === 'red' ? 'active' : ''}`;
+            document.getElementById('north-yellow').className = `light yellow ${trafficLightState.northSouth === 'yellow' ? 'active' : ''}`;
+            document.getElementById('north-green').className = `light green ${trafficLightState.northSouth === 'green' ? 'active' : ''}`;
+            
+            document.getElementById('south-red').className = `light red ${trafficLightState.northSouth === 'red' ? 'active' : ''}`;
+            document.getElementById('south-yellow').className = `light yellow ${trafficLightState.northSouth === 'yellow' ? 'active' : ''}`;
+            document.getElementById('south-green').className = `light green ${trafficLightState.northSouth === 'green' ? 'active' : ''}`;
+            
+            // Mettre à jour les feux Est-Ouest
+            document.getElementById('east-red').className = `light red ${trafficLightState.eastWest === 'red' ? 'active' : ''}`;
+            document.getElementById('east-yellow').className = `light yellow ${trafficLightState.eastWest === 'yellow' ? 'active' : ''}`;
+            document.getElementById('east-green').className = `light green ${trafficLightState.eastWest === 'green' ? 'active' : ''}`;
+            
+            document.getElementById('west-red').className = `light red ${trafficLightState.eastWest === 'red' ? 'active' : ''}`;
+            document.getElementById('west-yellow').className = `light yellow ${trafficLightState.eastWest === 'yellow' ? 'active' : ''}`;
+            document.getElementById('west-green').className = `light green ${trafficLightState.eastWest === 'green' ? 'active' : ''}`;
+        }
+        
+        // Initialiser l'état des feux au chargement
+        document.addEventListener('DOMContentLoaded', updateLights);
+    </script>
+</body>
+</html>
