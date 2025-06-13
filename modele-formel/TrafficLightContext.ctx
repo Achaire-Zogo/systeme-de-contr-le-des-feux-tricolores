@@ -1,0 +1,40 @@
+/*
+ * Contexte Event-B pour le contrôle des feux tricolores
+ * Ce contexte définit les constantes du système et leurs propriétés.
+ */
+
+CONTEXT TrafficLightContext
+
+CONSTANTS
+    MIN_PHASE_DURATION,    // Durée minimale d'une phase (secondes)
+    MAX_PHASE_DURATION,    // Durée maximale d'une phase (secondes)
+    DEFAULT_PHASE_DURATION, // Durées par défaut des phases
+    yellow_duration,       // Durée fixe du feu jaune (secondes)
+    MAX_QUEUE_LENGTH,      // Longueur maximale modélisable pour une file
+    OPTIMIZATION_INTERVAL  // Intervalle entre deux optimisations (en ticks)
+
+AXIOMS
+    // Typage des constantes
+    MIN_PHASE_DURATION ∈ ℕ1 &
+    MAX_PHASE_DURATION ∈ ℕ1 &
+    DEFAULT_PHASE_DURATION ∈ PHASES → ℕ1 &
+    yellow_duration ∈ ℕ1 &
+    MAX_QUEUE_LENGTH ∈ ℕ1 &
+    OPTIMIZATION_INTERVAL ∈ ℕ1 &
+    
+    // Propriétés des constantes
+    MIN_PHASE_DURATION = 10 &   // Minimum 10 secondes par phase
+    MAX_PHASE_DURATION = 60 &   // Maximum 60 secondes par phase
+    yellow_duration = 3 &       // 3 secondes pour le feu jaune
+    MAX_QUEUE_LENGTH = 50 &     // Maximum 50 véhicules par file
+    OPTIMIZATION_INTERVAL = 20 & // Optimisation tous les 20 ticks
+    
+    // Durées par défaut
+    DEFAULT_PHASE_DURATION = {
+        PHASE_NS ↦ 30,         // 30 secondes pour la phase Nord-Sud
+        PHASE_EW ↦ 30,         // 30 secondes pour la phase Est-Ouest
+        TRANSITION_NS_TO_EW ↦ yellow_duration,
+        TRANSITION_EW_TO_NS ↦ yellow_duration
+    }
+
+END

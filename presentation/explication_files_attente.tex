@@ -7,6 +7,14 @@
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{pgf-umlsd}
+\usepackage{pgfplots}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{enumitem}
 \geometry{margin=2.5cm}
 
 % Définition du langage JavaScript pour listings
@@ -24,6 +32,36 @@
   morestring=[b]',
   morestring=[b]"
 }
+
+% Style pour le code Event-B
+\lstdefinestyle{EventB}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  rulecolor=\color{black},
+  breaklines=true,
+  breakatwhitespace=true,
+  showstringspaces=false
+}
+
+% Configuration de TikZ pour les diagrammes
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, fit, backgrounds, decorations.pathreplacing}
+\tikzset{>=stealth'}
+
+% Style du document
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Syst\`eme de Contr\^ole des Feux Tricolores},
+    pdfauthor={Achaire Zogo}
+}
+
+% Titre et informations du document
+\title{\LARGE\textbf{Optimisation des Feux Tricolores\\\vspace{0.5em}\normalsize{Modélisation Event-B et Minimisation du Temps d'Attente}}}
+\author{Achaire Zogo}
+\date{\today}
 
 \definecolor{codebg}{RGB}{245,245,245}
 \lstset{

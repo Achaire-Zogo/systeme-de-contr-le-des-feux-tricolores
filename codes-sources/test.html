@@ -503,6 +503,18 @@
                     <div class="stat-value" id="systemState">Stable</div>
                     <div class="stat-label">État du Système</div>
                 </div>
+                <div class="stat-card">
+                    <h4>📊 Temps d'attente moyen</h4>
+                    <p><span id="waitTime">0.0s</span></p>
+                </div>
+                <div class="stat-card">
+                    <h4>🧂 Optimisation Event-B</h4>
+                    <p>
+                        <span class="small-label">Durée Nord-Sud:</span> <span id="phase-ns-duration">12</span>s<br>
+                        <span class="small-label">Durée Est-Ouest:</span> <span id="phase-ew-duration">12</span>s<br>
+                        <span class="small-label">Gain d'efficacité:</span> <span id="optimization-efficiency">0%</span>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -516,6 +528,13 @@
         let isRunning = false;
         let currentPhase = 0;
         let timeLeft = 12;
+        
+        // Constantes pour l'algorithme d'optimisation
+        const MIN_PHASE_DURATION = 10; // Durée minimale d'une phase (en secondes)
+        const MAX_PHASE_DURATION = 60; // Durée maximale d'une phase (en secondes)
+        const DEFAULT_PHASE_DURATION = 12; // Durée par défaut (en secondes)
+        const YELLOW_DURATION = 3; // Durée du feu jaune (en secondes)
+        const OPTIMIZATION_INTERVAL = 10; // Intervalle entre optimisations (en secondes)
         let entities = [];
         let pedestrians = [];
         let entityId = 0;
@@ -547,13 +566,14 @@
         ];
         
         // Phases des feux avec durées optimisées selon Little's Law
-        const phases = [
-            { duration: 12, name: "Nord-Sud Vert", ns: "green", ew: "red", pedestrian: false },
-            { duration: 3, name: "Nord-Sud Jaune", ns: "yellow", ew: "red", pedestrian: false },
-            { duration: 5, name: "Piétons NS", ns: "red", ew: "red", pedestrian: "ns" },
-            { duration: 12, name: "Est-Ouest Vert", ns: "red", ew: "green", pedestrian: false },
-            { duration: 3, name: "Est-Ouest Jaune", ns: "red", ew: "yellow", pedestrian: false },
-            { duration: 5, name: "Piétons EW", ns: "red", ew: "red", pedestrian: "ew" }
+        // Définition des phases avec durées dynamiques optimisables
+        let phases = [
+            { duration: DEFAULT_PHASE_DURATION, name: "Nord-Sud Vert", ns: "green", ew: "red", pedestrian: false, optimizable: true },
+            { duration: YELLOW_DURATION, name: "Nord-Sud Jaune", ns: "yellow", ew: "red", pedestrian: false, optimizable: false },
+            { duration: 5, name: "Piétons NS", ns: "red", ew: "red", pedestrian: "ns", optimizable: false },
+            { duration: DEFAULT_PHASE_DURATION, name: "Est-Ouest Vert", ns: "red", ew: "green", pedestrian: false, optimizable: true },
+            { duration: YELLOW_DURATION, name: "Est-Ouest Jaune", ns: "red", ew: "yellow", pedestrian: false, optimizable: false },
+            { duration: 5, name: "Piétons EW", ns: "red", ew: "red", pedestrian: "ew", optimizable: false }
         ];
 
 
@@ -830,7 +850,11 @@
             if (simulationRunning) return; // Éviter les démarrages multiples
             
             simulationRunning = true;
-            console.log('Simulation démarrée');
+            console.log('Simulation démarrée avec optimisation Event-B');
+            
+            // Initialiser les durées des phases
+            document.getElementById('phase-ns-duration').textContent = phases[0].duration;
+            document.getElementById('phase-ew-duration').textContent = phases[3].duration;
 
             // Placer exactement deux véhicules par voie au démarrage
             const intersectionPositions = {
@@ -870,6 +894,32 @@
             // Désactiver l'ajout automatique de véhicules
             // vehicleInterval = setInterval(...)
             
+            // Démarrer le cycle automatique des feux avec les durées optimisées
+            lightInterval = setInterval(() => {
+                // Passer à la phase suivante
+                currentPhase = (currentPhase + 1) % phases.length;
+                timeLeft = phases[currentPhase].duration;
+                
+                // Mettre à jour les feux selon la phase actuelle
+                if (phases[currentPhase].ns === 'green') {
+                    trafficLightState.northSouth = 'green';
+                    trafficLightState.eastWest = 'red';
+                } else if (phases[currentPhase].ns === 'yellow') {
+                    trafficLightState.northSouth = 'yellow';
+                } else if (phases[currentPhase].ew === 'green') {
+                    trafficLightState.northSouth = 'red';
+                    trafficLightState.eastWest = 'green';
+                } else if (phases[currentPhase].ew === 'yellow') {
+                    trafficLightState.eastWest = 'yellow';
+                } else {
+                    trafficLightState.northSouth = 'red';
+                    trafficLightState.eastWest = 'red';
+                }
+                
+                updateLights();
+                console.log(`Phase: ${phases[currentPhase].name}, Durée: ${phases[currentPhase].duration}s`);
+            }, 1000 * 12); // Initiallement toutes les 12 secondes, sera ajusté par l'optimisation
+            
             // Mettre à jour l'animation des véhicules
             simulationInterval = setInterval(() => {
                 // Mettre à jour la position de chaque véhicule
@@ -895,6 +945,9 @@
                         }
                     }
                 });
+                
+                        // Optimiser les durées des phases en fonction des files d'attente
+                optimizeTrafficLightPhases();
                 
                 // Boucle continue : lorsqu'un véhicule sort du cadre, il réapparaît de l'autre côté
                 entities.forEach(entity => {
@@ -1002,6 +1055,107 @@
             }
             
             updateLights();
+        }
+        
+        /**
+         * Applique les durées optimisées au cycle des feux
+         * Cette fonction permet de modifier dynamiquement l'intervalle du cycle des feux
+         * en fonction des durées optimisées calculées par l'algorithme
+         */
+        function applyOptimizedDurations() {
+            // Ne rien faire si la simulation n'est pas en cours
+            if (!simulationRunning || !lightInterval) return;
+            
+            // Arrêter l'intervalle courant
+            clearInterval(lightInterval);
+            
+            // Récupérer la durée de la phase courante (déjà optimisée)
+            const currentDuration = phases[currentPhase].duration;
+            
+            // Relancer l'intervalle avec la nouvelle durée
+            lightInterval = setInterval(() => {
+                // Passer à la phase suivante
+                currentPhase = (currentPhase + 1) % phases.length;
+                timeLeft = phases[currentPhase].duration;
+                
+                // Mettre à jour les feux selon la phase actuelle
+                if (phases[currentPhase].ns === 'green') {
+                    trafficLightState.northSouth = 'green';
+                    trafficLightState.eastWest = 'red';
+                } else if (phases[currentPhase].ns === 'yellow') {
+                    trafficLightState.northSouth = 'yellow';
+                } else if (phases[currentPhase].ew === 'green') {
+                    trafficLightState.northSouth = 'red';
+                    trafficLightState.eastWest = 'green';
+                } else if (phases[currentPhase].ew === 'yellow') {
+                    trafficLightState.eastWest = 'yellow';
+                } else {
+                    trafficLightState.northSouth = 'red';
+                    trafficLightState.eastWest = 'red';
+                }
+                
+                updateLights();
+                console.log(`Phase: ${phases[currentPhase].name}, Durée: ${phases[currentPhase].duration}s`);
+                
+                // Appliquer à nouveau les durées optimisées pour la prochaine phase
+                applyOptimizedDurations();
+            }, 1000 * currentDuration); // Intervalle basé sur la durée optimisée
+        }
+        
+        /**
+         * Fonction pour optimiser les durées des phases des feux en fonction des longueurs de files d'attente
+         * Utilise un modèle adaptatif basé sur les proportions relatives des files d'attente
+         * Conforme au modèle Event-B défini dans TrafficLightControl.mch
+         */
+        function optimizeTrafficLightPhases() {
+            // Ne pas optimiser si la simulation n'est pas en cours
+            if (!simulationRunning) return;
+            
+            // Récupérer les longueurs de files actuelles
+            const queueNorth = stats.currentQueues.north || 0;
+            const queueSouth = stats.currentQueues.south || 0;
+            const queueEast = stats.currentQueues.east || 0;
+            const queueWest = stats.currentQueues.west || 0;
+            
+            // Calculer les longueurs totales par axe
+            const queueNS = queueNorth + queueSouth;
+            const queueEW = queueEast + queueWest;
+            const totalQueue = queueNS + queueEW;
+            
+            // Si aucun véhicule en attente, conserver les durées par défaut
+            if (totalQueue === 0) {
+                phases[0].duration = DEFAULT_PHASE_DURATION; // Nord-Sud
+                phases[3].duration = DEFAULT_PHASE_DURATION; // Est-Ouest
+                return;
+            }
+            
+            // Calculer les durées optimales selon le modèle mathématique adaptatif
+            // Formula: duration = min_duration + (max_duration - min_duration) * (queue_direction / total_queue)
+            const durationNS = MIN_PHASE_DURATION + 
+                (MAX_PHASE_DURATION - MIN_PHASE_DURATION) * (queueNS / totalQueue);
+                
+            const durationEW = MIN_PHASE_DURATION + 
+                (MAX_PHASE_DURATION - MIN_PHASE_DURATION) * (queueEW / totalQueue);
+            
+            // Appliquer les nouvelles durées arrondies
+            phases[0].duration = Math.round(durationNS);
+            phases[3].duration = Math.round(durationEW);
+            
+            // Mettre à jour l'affichage des durées optimisées
+            document.getElementById('phase-ns-duration').textContent = phases[0].duration;
+            document.getElementById('phase-ew-duration').textContent = phases[3].duration;
+            
+            // Calculer et afficher le gain d'efficacité théorique
+            const defaultWaitTime = totalQueue * DEFAULT_PHASE_DURATION;
+            const optimizedWaitTime = (queueNS * durationNS) + (queueEW * durationEW);
+            const efficiency = defaultWaitTime > 0 ? 
+                Math.round((1 - optimizedWaitTime/defaultWaitTime) * 100) : 0;
+            document.getElementById('optimization-efficiency').textContent = efficiency + '%';
+            
+            console.log(`Optimisation: NS=${Math.round(durationNS)}s, EW=${Math.round(durationEW)}s, Efficacité: ${efficiency}%`);
+            
+            // Appliquer les durées optimisées au cycle des feux
+            applyOptimizedDurations();
         }
         
         // Fonction pour mettre à jour l'affichage des feux

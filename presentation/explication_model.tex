@@ -1,0 +1,88 @@
+% Contenu principal du document sur le modèle Event-B et l'algorithme d'optimisation
+% À inclure dans le document principal
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+\label{sec:introduction}
+
+Les systèmes de contrôle des feux tricolores jouent un rôle critique dans la gestion du trafic urbain. Un contrôle efficace peut significativement réduire les temps d'attente, les embouteillages et la pollution. Cette étude présente une approche formelle pour la modélisation et l'optimisation d'un système de feux tricolores à un carrefour à quatre voies en utilisant Event-B pour la spécification formelle et un modèle mathématique adaptatif pour minimiser le temps d'attente des véhicules.
+
+Notre approche comprend deux volets principaux :
+\begin{itemize}
+    \item Une \textbf{modélisation formelle} utilisant Event-B pour garantir la sécurité et la correction du système
+    \item Un \textbf{modèle mathématique adaptatif} qui optimise les durées des phases de feux en fonction des files d'attente
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[node distance=1.5cm, auto]
+    % Définir les styles
+    \tikzstyle{block} = [rectangle, draw, fill=blue!20, text width=8em, text centered, rounded corners, minimum height=3em]
+    \tikzstyle{line} = [draw, -latex']
+    
+    % Nœuds principaux
+    \node [block] (eventb) {Modélisation Event-B};
+    \node [block, below of=eventb] (math) {Modèle Mathématique};
+    \node [block, below of=math] (impl) {Implémentation};
+    
+    % Connections
+    \path [line] (eventb) -- (math);
+    \path [line] (math) -- (impl);
+    
+    % Détails à droite
+    \node [block, right of=eventb, xshift=4cm] (safety) {Propriétés de sécurité};
+    \node [block, right of=math, xshift=4cm] (optim) {Algorithme d'optimisation};
+    \node [block, right of=impl, xshift=4cm] (js) {Interface JavaScript};
+    
+    % Connections détails
+    \path [line] (eventb) -- (safety);
+    \path [line] (math) -- (optim);
+    \path [line] (impl) -- (js);
+\end{tikzpicture}
+\caption{Aperçu de notre approche pour le système de contrôle des feux tricolores}
+\label{fig:overview}
+\end{figure}
+
+\section{Modélisation formelle avec Event-B}
+\label{sec:eventb}
+
+Event-B est une méthode formelle de modélisation de systèmes basée sur la théorie des ensembles et la logique du premier ordre. Elle permet de spécifier le comportement d'un système et de vérifier formellement ses propriétés de sécurité.
+
+\subsection{Structure du modèle}
+\label{subsec:modele}
+
+Notre modèle Event-B pour le contrôle des feux tricolores se compose de deux parties principales :
+\begin{itemize}
+    \item Un \textbf{contexte} (\texttt{TrafficLightContext.ctx}) qui définit les constantes et propriétés statiques
+    \item Une \textbf{machine} (\texttt{TrafficLightControl.mch}) qui définit les variables, invariants et événements du système
+\end{itemize}
+
+\subsubsection{Contexte du modèle}
+\label{subsubsec:contexte}
+
+Le contexte définit les constantes et leurs propriétés :
+
+\begin{lstlisting}[style=EventB, caption=Extrait du contexte Event-B]
+CONTEXT TrafficLightContext
+
+CONSTANTS
+    MIN_PHASE_DURATION,    // Durée minimale d'une phase
+    MAX_PHASE_DURATION,    // Durée maximale d'une phase
+    DEFAULT_PHASE_DURATION, // Durées par défaut
+    yellow_duration,       // Durée du feu jaune
+    MAX_QUEUE_LENGTH,      // Longueur maximale de file
+    OPTIMIZATION_INTERVAL  // Intervalle d'optimisation
+
+AXIOMS
+    MIN_PHASE_DURATION = 10 &
+    MAX_PHASE_DURATION = 60 &
+    yellow_duration = 3 &
+    MAX_QUEUE_LENGTH = 50 &
+    OPTIMIZATION_INTERVAL = 20
+END
+\end{lstlisting}
