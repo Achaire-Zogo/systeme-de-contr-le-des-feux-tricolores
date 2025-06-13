@@ -1,0 +1,22 @@
+\frametitle{Exemple d'événement: OptimizePhases}
+\begin{lstlisting}[style=EventB]
+EVENT OptimizePhases
+  WHERE
+    // L'événement ne peut s'exécuter que périodiquement
+    timer mod OPTIMIZATION_INTERVAL = 0
+  THEN
+    // Ajustement des durées de phases en fonction des files d'attente
+    // Actions définies de façon abstraite et raffinées dans l'implémentation
+    phase_duration :| phase_duration' ∈ PHASES → ℕ
+      ∧ (∀p · p ∈ PHASES ⇒ phase_duration'(p) ≥ MIN_PHASE_DURATION
+                            ∧ phase_duration'(p) ≤ MAX_PHASE_DURATION)
+      ∧ phase_duration'(PHASE_NS) ∝ queue_length(NORTH) + queue_length(SOUTH)
+      ∧ phase_duration'(PHASE_EW) ∝ queue_length(EAST) + queue_length(WEST)
+END
+  \end{lstlisting}
+
+  \begin{itemize}
+    \item L'événement s'exécute périodiquement pour optimiser les durées
+    \item Les durées sont proportionnelles aux longueurs des files d'attente
+    \item Les contraintes de durées minimales et maximales sont respectées
+  \end{itemize}

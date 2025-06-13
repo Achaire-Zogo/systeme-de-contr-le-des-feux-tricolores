@@ -1145,14 +1145,29 @@
             document.getElementById('phase-ns-duration').textContent = phases[0].duration;
             document.getElementById('phase-ew-duration').textContent = phases[3].duration;
             
-            // Calculer et afficher le gain d'efficacité théorique
+            // Calcul amélioré et affichage du gain d'efficacité
             const defaultWaitTime = totalQueue * DEFAULT_PHASE_DURATION;
             const optimizedWaitTime = (queueNS * durationNS) + (queueEW * durationEW);
-            const efficiency = defaultWaitTime > 0 ? 
-                Math.round((1 - optimizedWaitTime/defaultWaitTime) * 100) : 0;
-            document.getElementById('optimization-efficiency').textContent = efficiency + '%';
+            let efficiency = 0;
+            let efficiencyDisplay = '';
+            if (defaultWaitTime > 1e-3) { // seuil pour éviter division par zéro ou valeur trop petite
+                efficiency = ((1 - optimizedWaitTime / defaultWaitTime) * 100);
+                // Afficher le signe + pour les gains positifs
+                if (efficiency >= 0) {
+                    efficiencyDisplay = '+' + Math.round(efficiency) + '%';
+                } else {
+                    efficiencyDisplay = Math.round(efficiency) + '%';
+                }
+                // Si inefficace, ajouter un message explicite
+                if (efficiency < 0) {
+                    efficiencyDisplay += ' (inefficace)';
+                }
+            } else {
+                efficiencyDisplay = 'N/A';
+            }
+            document.getElementById('optimization-efficiency').textContent = efficiencyDisplay;
             
-            console.log(`Optimisation: NS=${Math.round(durationNS)}s, EW=${Math.round(durationEW)}s, Efficacité: ${efficiency}%`);
+            console.log(`Optimisation: NS=${Math.round(durationNS)}s, EW=${Math.round(durationEW)}s, Efficacité: ${efficiencyDisplay}`);
             
             // Appliquer les durées optimisées au cycle des feux
             applyOptimizedDurations();
